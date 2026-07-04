@@ -1,0 +1,25 @@
+{
+  "name": "complaint-management-frontend",
+  "version": "1.0.0",
+  "description": "城市投诉自动回复系统前端",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "axios": "^1.6.8",
+    "element-plus": "^2.6.3",
+    "echarts": "^5.5.0",
+    "vue-echarts": "^6.6.1",
+    "pinia": "^2.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.10"
+  }
+}

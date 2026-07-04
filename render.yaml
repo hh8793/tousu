@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: complaint-management
+    env: node
+    plan: starter
+    buildCommand: "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build"
+    startCommand: "node -r tsconfig-paths/register backend/dist/server.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        fromDatabase:
+          name: complaint-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENCLAW_API_URL
+        value: https://api.openclaw.example.com
+      - key: OPENCLAW_API_KEY
+        generateValue: true
+
+databases:
+  - name: complaint-db
+    databaseName: complaint-management
+    user: admin
+    plan: starter

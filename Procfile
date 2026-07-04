@@ -1,0 +1,1 @@
+web: node -r tsconfig-paths/register backend/dist/server.js
