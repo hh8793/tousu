@@ -25,8 +25,8 @@ app.post('/api/upload', upload.array('images', 5), (req: any, res) => {
 
 app.use('/api', routes);
 
-if (config.environment === 'production') {
-  const frontendDist = path.join(__dirname, '../../frontend/dist');
+if (process.env.NODE_ENV === 'production') {
+  const frontendDist = path.join(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist));
   app.get('*', (req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
