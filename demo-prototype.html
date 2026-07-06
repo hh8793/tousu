@@ -3,276 +3,737 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>城市投诉自动回复系统 - 演示原型</title>
+  <title>城市投诉自动回复系统</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.6.3/dist/index.css">
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/element-plus@2.6.3/dist/index.full.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.css">
   <style>
-    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
-    .el-dialog__body { padding: 15px 20px; }
-    .complaint-card { transition: all 0.3s; }
-    .complaint-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-    .status-pending { background-color: #fef3c7; color: #d97706; }
-    .status-processing { background-color: #dbeafe; color: #2563eb; }
-    .status-resolved { background-color: #dcfce7; color: #16a34a; }
-    .status-closed { background-color: #f3f4f6; color: #6b7280; }
-    .nav-item { cursor: pointer; padding: 10px 20px; border-radius: 8px; transition: all 0.2s; }
-    .nav-item.active { background-color: #667eea; color: white; }
-    .nav-item:hover:not(.active) { background-color: #f3f4f6; }
-    .category-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; background-color: #e0e7ff; color: #4338ca; }
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --warning-gradient: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+      --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.5);
+      --card-radius: 20px;
+      --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+    }
+    
+    body {
+      margin: 0;
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      color: var(--text-primary);
+    }
+    
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--card-radius);
+      transition: all 0.3s ease;
+    }
+    
+    .glass-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .gradient-text {
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .status-badge {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .status-pending { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .status-processing { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .status-resolved { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .status-analyzing { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+    .status-auto-replied { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .status-closed { background: rgba(156, 163, 175, 0.15); color: #9ca3af; }
+    
+    .nav-item {
+      cursor: pointer;
+      padding: 12px 20px;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .nav-item.active {
+      background: var(--primary-gradient);
+      color: white;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .nav-item:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .stat-card {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    }
+    
+    .category-tag {
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      background: rgba(102, 126, 234, 0.2);
+      color: #a5b4fc;
+      backdrop-filter: blur(10px);
+    }
+    
+    .btn-gradient {
+      background: var(--primary-gradient);
+      border: none;
+      color: white;
+      padding: 10px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .btn-gradient:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+    }
+    
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      padding: 10px 24px;
+      border-radius: 12px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+    
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+    
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.6); }
+    }
+    
+    .pulse-animation { animation: pulse-glow 2s ease-in-out infinite; }
+    
+    @keyframes scan-line {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+    
+    .scan-animation {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .scan-animation::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #667eea, transparent);
+      animation: scan-line 2s linear infinite;
+    }
+    
+    .analysis-step {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+    }
+    
+    .analysis-step.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .analysis-step.completed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .analysis-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all 0.3s ease;
+    }
+    
+    .analysis-icon.completed {
+      background: var(--success-gradient);
+      color: white;
+    }
+    
+    .analysis-icon.active {
+      background: var(--primary-gradient);
+      color: white;
+      animation: pulse-glow 1s ease-in-out infinite;
+    }
+    
+    .analysis-icon.pending {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+    
+    .keyword-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(102, 126, 234, 0.2);
+      color: #a5b4fc;
+      font-size: 12px;
+      margin: 4px;
+    }
+    
+    .confidence-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .confidence-fill {
+      height: 100%;
+      background: var(--primary-gradient);
+      border-radius: 4px;
+      transition: width 0.8s ease;
+    }
+    
+    .ai-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #667eea;
+      animation: typing-bounce 1.4s infinite ease-in-out;
+    }
+    
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typing-bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+    
+    .el-dialog {
+      background: rgba(26, 26, 46, 0.95) !important;
+      backdrop-filter: blur(20px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 20px !important;
+    }
+    
+    .el-dialog__header { border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; }
+    .el-dialog__title { color: white !important; }
+    
+    .el-input__wrapper {
+      background: rgba(255, 255, 255, 0.05) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 12px !important;
+    }
+    
+    .el-input__inner { color: white !important; }
+    
+    .el-textarea__inner {
+      background: rgba(255, 255, 255, 0.05) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      color: white !important;
+      border-radius: 12px !important;
+    }
+    
+    .el-form-item__label { color: rgba(255, 255, 255, 0.8) !important; }
+    
+    .el-button--primary {
+      background: var(--primary-gradient) !important;
+      border: none !important;
+      border-radius: 12px !important;
+    }
+    
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body>
   <div id="app">
-    <div class="min-h-screen bg-gray-50">
-      <header class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">🏙️</span>
+    <div class="min-h-screen">
+      <header class="glass-card mx-4 mt-4 px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center pulse-animation">
+              <i class="ri-building-2-line text-2xl text-white"></i>
+            </div>
             <div>
-              <h1 class="text-lg font-bold text-gray-800">城市投诉自动回复系统</h1>
-              <p class="text-xs text-gray-500">智能分类 · 自动响应 · 高效处理</p>
+              <h1 class="text-xl font-bold gradient-text">城市投诉管理系统</h1>
+              <p class="text-xs text-muted">智能分类 · 自动响应 · 高效处理</p>
             </div>
           </div>
           <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2 text-sm">
-              <span class="status-badge status-resolved">{{ stats.totalResolved }} 已处理</span>
-              <span class="status-badge status-pending">{{ stats.totalPending }} 待处理</span>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 text-green-400">
+                <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                <span class="text-sm font-medium">{{ stats.totalResolved }} 已处理</span>
+              </div>
+              <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-400">
+                <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                <span class="text-sm font-medium">{{ stats.totalPending }} 待处理</span>
+              </div>
             </div>
-            <el-button type="primary" @click="showSubmitDialog = true">提交投诉</el-button>
-            <el-button @click="toggleLogin">
+            <button class="btn-gradient flex items-center gap-2" @click="showSubmitDialog = true">
+              <i class="ri-add-circle-line"></i>
+              提交投诉
+            </button>
+            <button class="btn-ghost flex items-center gap-2" @click="toggleLogin">
+              <i class="ri-user-line"></i>
               {{ currentUser ? currentUser.username : '登录' }}
-            </el-button>
+            </button>
           </div>
         </div>
       </header>
 
-      <main class="max-w-6xl mx-auto px-4 py-6">
+      <main class="mx-4 mt-6">
         <div class="flex gap-6">
           <aside class="w-64 flex-shrink-0">
-            <div class="bg-white rounded-xl shadow-sm p-4">
-              <div class="text-sm font-semibold text-gray-700 mb-3">功能导航</div>
-              <div class="space-y-1">
+            <div class="glass-card p-4">
+              <div class="text-sm font-semibold text-secondary mb-4 flex items-center gap-2">
+                <i class="ri-layout-grid-line"></i>
+                功能导航
+              </div>
+              <div class="space-y-2">
                 <div class="nav-item" :class="{ active: currentTab === 'home' }" @click="currentTab = 'home'">
-                  📊 数据概览
+                  <i class="ri-dashboard-line"></i>
+                  <span>数据概览</span>
                 </div>
                 <div class="nav-item" :class="{ active: currentTab === 'complaints' }" @click="currentTab = 'complaints'">
-                  📋 投诉列表
+                  <i class="ri-file-list-line"></i>
+                  <span>投诉列表</span>
                 </div>
                 <div class="nav-item" :class="{ active: currentTab === 'my' }" @click="currentTab = 'my'">
-                  👤 我的投诉
+                  <i class="ri-user-settings-line"></i>
+                  <span>我的投诉</span>
                 </div>
                 <div v-if="currentUser?.role === 'ADMIN'" class="nav-item" :class="{ active: currentTab === 'admin' }" @click="currentTab = 'admin'">
-                  🔧 管理后台
+                  <i class="ri-settings-2-line"></i>
+                  <span>管理后台</span>
+                </div>
+              </div>
+              <div class="mt-6 pt-4 border-t border-white/10">
+                <div class="text-xs text-muted mb-2">OpenClaw AI</div>
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></div>
+                  <span class="text-xs text-secondary">智能分析引擎</span>
                 </div>
               </div>
             </div>
           </aside>
 
           <div class="flex-1">
-            <div v-if="currentTab === 'home'" class="space-y-6">
-              <div class="grid grid-cols-4 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-3xl font-bold text-gray-800">{{ stats.total }}</div>
-                  <div class="text-sm text-gray-500 mt-1">总投诉数</div>
+            <transition name="fade" mode="out-in">
+              <div v-if="currentTab === 'home'" key="home" class="space-y-6">
+                <div class="grid grid-cols-4 gap-4">
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">总投诉数</div>
+                    <div class="text-4xl font-bold gradient-text">{{ stats.total }}</div>
+                    <div class="mt-3 flex items-center gap-2 text-xs text-green-400">
+                      <i class="ri-arrow-up-line"></i>
+                      <span>+12% 较上周</span>
+                    </div>
+                  </div>
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">待处理</div>
+                    <div class="text-4xl font-bold text-yellow-400">{{ stats.totalPending }}</div>
+                    <div class="mt-3 flex items-center gap-2 text-xs text-yellow-400/70">
+                      <i class="ri-clock-line"></i>
+                      <span>平均等待 2小时</span>
+                    </div>
+                  </div>
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">AI自动回复</div>
+                    <div class="text-4xl font-bold text-purple-400">{{ stats.totalAutoReplied }}</div>
+                    <div class="mt-3 flex items-center gap-2 text-xs text-purple-400/70">
+                      <i class="ri-robot-line"></i>
+                      <span>准确率 92%</span>
+                    </div>
+                  </div>
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">已解决</div>
+                    <div class="text-4xl font-bold text-green-400">{{ stats.totalResolved }}</div>
+                    <div class="mt-3 flex items-center gap-2 text-xs text-green-400/70">
+                      <i class="ri-check-circle-line"></i>
+                      <span>解决率 87%</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-3xl font-bold text-yellow-600">{{ stats.totalPending }}</div>
-                  <div class="text-sm text-gray-500 mt-1">待处理</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-3xl font-bold text-blue-600">{{ stats.totalProcessing }}</div>
-                  <div class="text-sm text-gray-500 mt-1">处理中</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-3xl font-bold text-green-600">{{ stats.totalResolved }}</div>
-                  <div class="text-sm text-gray-500 mt-1">已解决</div>
-                </div>
-              </div>
 
-              <div class="grid grid-cols-2 gap-6">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <h3 class="text-sm font-semibold text-gray-700 mb-4">投诉类型分布</h3>
-                  <div ref="typeChart" class="h-64"></div>
+                <div class="grid grid-cols-2 gap-6">
+                  <div class="glass-card p-6">
+                    <h3 class="text-sm font-semibold text-secondary mb-4 flex items-center gap-2">
+                      <i class="ri-pie-chart-line"></i>
+                      投诉类型分布
+                    </h3>
+                    <div ref="typeChart" class="h-72"></div>
+                  </div>
+                  <div class="glass-card p-6">
+                    <h3 class="text-sm font-semibold text-secondary mb-4 flex items-center gap-2">
+                      <i class="ri-trending-up-line"></i>
+                      处理效率趋势
+                    </h3>
+                    <div ref="trendChart" class="h-72"></div>
+                  </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <h3 class="text-sm font-semibold text-gray-700 mb-4">处理效率趋势</h3>
-                  <div ref="trendChart" class="h-64"></div>
-                </div>
-              </div>
 
-              <div class="bg-white rounded-xl shadow-sm p-5">
-                <h3 class="text-sm font-semibold text-gray-700 mb-4">最新投诉</h3>
-                <div class="space-y-3">
-                  <div v-for="complaint in latestComplaints" :key="complaint.id" class="complaint-card bg-gray-50 rounded-lg p-4">
-                    <div class="flex items-start justify-between">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                          <span class="category-tag">{{ complaint.category }}</span>
-                          <span :class="['status-badge', 'status-' + complaint.status]">{{ complaint.statusText }}</span>
+                <div class="glass-card p-6">
+                  <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-secondary flex items-center gap-2">
+                      <i class="ri-newspaper-line"></i>
+                      最新投诉
+                    </h3>
+                    <button class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                      查看全部
+                    </button>
+                  </div>
+                  <div class="space-y-4">
+                    <div v-for="(complaint, index) in latestComplaints" :key="complaint.id" 
+                         class="glass-card p-4 cursor-pointer hover:bg-white/10 transition-all"
+                         @click="viewComplaint(complaint)">
+                      <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 mb-2">
+                            <span class="category-tag">{{ complaint.category }}</span>
+                            <span :class="['status-badge', 'status-' + complaint.status]">
+                              <i v-if="complaint.status === 'analyzing'" class="ri-loader-4-line animate-spin"></i>
+                              <i v-else-if="complaint.status === 'auto-replied'" class="ri-robot-line"></i>
+                              <i v-else-if="complaint.status === 'pending'" class="ri-clock-line"></i>
+                              <i v-else-if="complaint.status === 'processing'" class="ri-loader-4-line animate-spin"></i>
+                              <i v-else-if="complaint.status === 'resolved'" class="ri-check-circle-line"></i>
+                              <i v-else class="ri-close-circle-line"></i>
+                              {{ complaint.statusText }}
+                            </span>
+                          </div>
+                          <p class="text-lg font-semibold">{{ complaint.title }}</p>
+                          <p class="text-sm text-muted mt-1 line-clamp-2">{{ complaint.content }}</p>
                         </div>
-                        <p class="text-gray-800 font-medium">{{ complaint.title }}</p>
-                        <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ complaint.content }}</p>
-                      </div>
-                      <div class="text-right">
-                        <p class="text-xs text-gray-400">{{ complaint.createdAt }}</p>
-                        <p class="text-xs text-gray-500">{{ complaint.userName }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="currentTab === 'complaints'">
-              <div class="bg-white rounded-xl shadow-sm p-5">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-sm font-semibold text-gray-700">投诉列表</h3>
-                  <div class="flex items-center gap-3">
-                    <el-select v-model="filterStatus" placeholder="状态筛选" class="w-32">
-                      <el-option label="全部" value="" />
-                      <el-option label="待处理" value="pending" />
-                      <el-option label="处理中" value="processing" />
-                      <el-option label="已解决" value="resolved" />
-                      <el-option label="已关闭" value="closed" />
-                    </el-select>
-                    <el-input v-model="searchKeyword" placeholder="搜索投诉内容" class="w-64" />
-                  </div>
-                </div>
-                <div class="space-y-3">
-                  <div v-for="complaint in filteredComplaints" :key="complaint.id" class="complaint-card bg-gray-50 rounded-lg p-4">
-                    <div class="flex items-start justify-between">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                          <span class="category-tag">{{ complaint.category }}</span>
-                          <span :class="['status-badge', 'status-' + complaint.status]">{{ complaint.statusText }}</span>
+                        <div class="text-right ml-4">
+                          <p class="text-xs text-muted">{{ complaint.createdAt }}</p>
+                          <p class="text-xs text-secondary mt-1">{{ complaint.userName }}</p>
                         </div>
-                        <p class="text-gray-800 font-medium">{{ complaint.title }}</p>
-                        <p class="text-sm text-gray-500 mt-1">{{ complaint.content }}</p>
                       </div>
-                      <div class="text-right">
-                        <p class="text-xs text-gray-400">{{ complaint.createdAt }}</p>
-                        <p class="text-xs text-gray-500">{{ complaint.userName }}</p>
-                      </div>
-                    </div>
-                    <div v-if="complaint.reply" class="mt-3 pt-3 border-t border-gray-200">
-                      <div class="flex items-start gap-2">
-                        <span class="text-xs text-blue-600 font-medium">自动回复:</span>
-                        <p class="text-sm text-gray-600">{{ complaint.reply }}</p>
-                      </div>
-                    </div>
-                    <div class="mt-3 flex items-center gap-2">
-                      <el-button size="small" @click="viewComplaint(complaint)">查看详情</el-button>
-                      <el-button size="small" type="primary" v-if="complaint.status === 'pending'" @click="processComplaint(complaint)">开始处理</el-button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="currentTab === 'my'">
-              <div class="bg-white rounded-xl shadow-sm p-5">
-                <h3 class="text-sm font-semibold text-gray-700 mb-4">我的投诉</h3>
-                <div v-if="!currentUser" class="text-center py-12">
-                  <p class="text-gray-500">请先登录查看我的投诉</p>
-                  <el-button type="primary" @click="toggleLogin" class="mt-4">立即登录</el-button>
-                </div>
-                <div v-else class="space-y-3">
-                  <div v-for="complaint in myComplaints" :key="complaint.id" class="complaint-card bg-gray-50 rounded-lg p-4">
-                    <div class="flex items-start justify-between">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                          <span class="category-tag">{{ complaint.category }}</span>
-                          <span :class="['status-badge', 'status-' + complaint.status]">{{ complaint.statusText }}</span>
+                      <div v-if="complaint.reply" class="mt-3 pt-3 border-t border-white/10">
+                        <div class="flex items-start gap-2">
+                          <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                            <i class="ri-mail-reply-line text-xs text-indigo-400"></i>
+                          </div>
+                          <div>
+                            <span class="text-xs text-indigo-400 font-medium">AI自动回复</span>
+                            <p class="text-sm text-secondary mt-1">{{ complaint.reply }}</p>
+                          </div>
                         </div>
-                        <p class="text-gray-800 font-medium">{{ complaint.title }}</p>
-                        <p class="text-sm text-gray-500 mt-1">{{ complaint.content }}</p>
-                      </div>
-                      <p class="text-xs text-gray-400">{{ complaint.createdAt }}</p>
-                    </div>
-                    <div v-if="complaint.reply" class="mt-3 pt-3 border-t border-gray-200">
-                      <div class="flex items-start gap-2">
-                        <span class="text-xs text-blue-600 font-medium">回复:</span>
-                        <p class="text-sm text-gray-600">{{ complaint.reply }}</p>
                       </div>
                     </div>
                   </div>
-                  <div v-if="myComplaints.length === 0" class="text-center py-8 text-gray-500">暂无投诉记录</div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="currentTab === 'admin'">
-              <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-2xl font-bold text-gray-800">{{ userStats.total }}</div>
-                  <div class="text-sm text-gray-500 mt-1">总用户数</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-2xl font-bold text-purple-600">{{ userStats.admin }}</div>
-                  <div class="text-sm text-gray-500 mt-1">管理员</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                  <div class="text-2xl font-bold text-green-600">{{ userStats.citizen }}</div>
-                  <div class="text-sm text-gray-500 mt-1">市民用户</div>
                 </div>
               </div>
 
-              <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-                <h3 class="text-sm font-semibold text-gray-700 mb-4">回复模板管理</h3>
-                <div class="space-y-3">
-                  <div v-for="template in replyTemplates" :key="template.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <span class="text-sm font-medium text-gray-800">{{ template.category }}</span>
-                      <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ template.content }}</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <el-button size="small" @click="editTemplate(template)">编辑</el-button>
-                      <el-button size="small" type="danger">删除</el-button>
-                    </div>
-                  </div>
-                </div>
-                <el-button type="primary" size="small" class="mt-4" @click="addTemplate">添加模板</el-button>
-              </div>
-
-              <div class="bg-white rounded-xl shadow-sm p-5">
-                <h3 class="text-sm font-semibold text-gray-700 mb-4">用户管理</h3>
-                <div class="space-y-3">
-                  <div v-for="user in users" :key="user.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div v-if="currentTab === 'complaints'" key="complaints">
+                <div class="glass-card p-6">
+                  <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                      <i class="ri-file-list-line"></i>
+                      投诉列表
+                    </h3>
                     <div class="flex items-center gap-3">
-                      <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600">
-                        {{ user.username.charAt(0) }}
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-800">{{ user.username }}</p>
-                        <p class="text-xs text-gray-500">{{ user.email }}</p>
+                      <el-select v-model="filterStatus" placeholder="状态筛选" class="w-32">
+                        <el-option label="全部" value="" />
+                        <el-option label="待处理" value="pending" />
+                        <el-option label="AI分析中" value="analyzing" />
+                        <el-option label="处理中" value="processing" />
+                        <el-option label="已解决" value="resolved" />
+                        <el-option label="已关闭" value="closed" />
+                      </el-select>
+                      <div class="relative">
+                        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
+                        <el-input v-model="searchKeyword" placeholder="搜索投诉内容" class="w-64 pl-10" />
                       </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                      <span class="text-xs px-2 py-1 rounded bg-gray-200">
-                        {{ user.role === 'ADMIN' ? '管理员' : '市民' }}
-                      </span>
-                      <el-button size="small" type="danger" v-if="user.role !== 'ADMIN'">禁用</el-button>
+                  </div>
+                  <div class="space-y-4">
+                    <div v-for="complaint in filteredComplaints" :key="complaint.id" 
+                         class="glass-card p-5 hover:bg-white/10 transition-all">
+                      <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 mb-3">
+                            <span class="category-tag">{{ complaint.category }}</span>
+                            <span :class="['status-badge', 'status-' + complaint.status]">
+                              <i v-if="complaint.status === 'analyzing'" class="ri-loader-4-line animate-spin"></i>
+                              <i v-else-if="complaint.status === 'auto-replied'" class="ri-robot-line"></i>
+                              <i v-else-if="complaint.status === 'pending'" class="ri-clock-line"></i>
+                              <i v-else-if="complaint.status === 'processing'" class="ri-loader-4-line animate-spin"></i>
+                              <i v-else-if="complaint.status === 'resolved'" class="ri-check-circle-line"></i>
+                              <i v-else class="ri-close-circle-line"></i>
+                              {{ complaint.statusText }}
+                            </span>
+                          </div>
+                          <h4 class="text-lg font-semibold">{{ complaint.title }}</h4>
+                          <p class="text-secondary mt-1">{{ complaint.content }}</p>
+                          <div v-if="complaint.analysis" class="mt-3 flex flex-wrap gap-2">
+                            <span v-for="keyword in complaint.analysis.keywords" :key="keyword" class="keyword-tag">
+                              <i class="ri-tag-line text-xs"></i>
+                              {{ keyword }}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="text-right ml-6">
+                          <p class="text-xs text-muted">{{ complaint.createdAt }}</p>
+                          <p class="text-sm text-secondary mt-2">{{ complaint.userName }}</p>
+                        </div>
+                      </div>
+                      <div v-if="complaint.reply" class="mt-4 pt-4 border-t border-white/10">
+                        <div class="flex items-start gap-3">
+                          <div class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                            <i class="ri-mail-reply-line text-sm text-indigo-400"></i>
+                          </div>
+                          <div>
+                            <span class="text-xs text-indigo-400 font-medium">AI自动回复</span>
+                            <p class="text-secondary mt-1">{{ complaint.reply }}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-4 flex items-center gap-3">
+                        <button class="btn-ghost text-sm" @click="viewComplaint(complaint)">
+                          <i class="ri-eye-line"></i>
+                          查看详情
+                        </button>
+                        <button v-if="complaint.status === 'pending'" class="btn-gradient text-sm flex items-center gap-1" @click="processComplaint(complaint)">
+                          <i class="ri-play-circle-line"></i>
+                          AI分析
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              <div v-if="currentTab === 'my'" key="my">
+                <div class="glass-card p-6">
+                  <h3 class="text-lg font-semibold mb-6 flex items-center gap-2">
+                    <i class="ri-user-settings-line"></i>
+                    我的投诉
+                  </h3>
+                  <div v-if="!currentUser" class="text-center py-16">
+                    <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                      <i class="ri-user-line text-4xl text-muted"></i>
+                    </div>
+                    <p class="text-secondary mb-4">请先登录查看我的投诉</p>
+                    <button class="btn-gradient" @click="toggleLogin">立即登录</button>
+                  </div>
+                  <div v-else class="space-y-4">
+                    <div v-for="complaint in myComplaints" :key="complaint.id" 
+                         class="glass-card p-5 hover:bg-white/10 transition-all">
+                      <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 mb-3">
+                            <span class="category-tag">{{ complaint.category }}</span>
+                            <span :class="['status-badge', 'status-' + complaint.status]">
+                              <i v-if="complaint.status === 'analyzing'" class="ri-loader-4-line animate-spin"></i>
+                              <i v-else-if="complaint.status === 'auto-replied'" class="ri-robot-line"></i>
+                              <i v-else-if="complaint.status === 'pending'" class="ri-clock-line"></i>
+                              <i v-else-if="complaint.status === 'processing'" class="ri-loader-4-line animate-spin"></i>
+                              <i v-else-if="complaint.status === 'resolved'" class="ri-check-circle-line"></i>
+                              <i v-else class="ri-close-circle-line"></i>
+                              {{ complaint.statusText }}
+                            </span>
+                          </div>
+                          <h4 class="text-lg font-semibold">{{ complaint.title }}</h4>
+                          <p class="text-secondary mt-1">{{ complaint.content }}</p>
+                        </div>
+                        <p class="text-xs text-muted">{{ complaint.createdAt }}</p>
+                      </div>
+                      <div v-if="complaint.reply" class="mt-4 pt-4 border-t border-white/10">
+                        <div class="flex items-start gap-3">
+                          <div class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                            <i class="ri-mail-reply-line text-sm text-indigo-400"></i>
+                          </div>
+                          <div>
+                            <span class="text-xs text-indigo-400 font-medium">AI自动回复</span>
+                            <p class="text-secondary mt-1">{{ complaint.reply }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="myComplaints.length === 0" class="text-center py-12">
+                      <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                        <i class="ri-inbox-line text-3xl text-muted"></i>
+                      </div>
+                      <p class="text-muted">暂无投诉记录</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="currentTab === 'admin'" key="admin">
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">总用户数</div>
+                    <div class="text-3xl font-bold gradient-text">{{ userStats.total }}</div>
+                  </div>
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">管理员</div>
+                    <div class="text-3xl font-bold text-purple-400">{{ userStats.admin }}</div>
+                  </div>
+                  <div class="stat-card glass-card p-5">
+                    <div class="text-xs text-muted mb-2">市民用户</div>
+                    <div class="text-3xl font-bold text-green-400">{{ userStats.citizen }}</div>
+                  </div>
+                </div>
+
+                <div class="glass-card p-6 mb-6">
+                  <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                      <i class="ri-message-template-line"></i>
+                      回复模板管理
+                    </h3>
+                    <button class="btn-gradient text-sm flex items-center gap-1" @click="addTemplate">
+                      <i class="ri-add-line"></i>
+                      添加模板
+                    </button>
+                  </div>
+                  <div class="space-y-3">
+                    <div v-for="template in replyTemplates" :key="template.id" 
+                         class="glass-card p-4 hover:bg-white/10 transition-all">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <span class="category-tag">{{ template.category }}</span>
+                          <p class="text-secondary mt-2 line-clamp-2">{{ template.content }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button class="btn-ghost text-xs" @click="editTemplate(template)">
+                            <i class="ri-edit-line"></i>
+                            编辑
+                          </button>
+                          <button class="btn-ghost text-xs text-red-400 hover:text-red-300" @click="deleteTemplate(template)">
+                            <i class="ri-delete-bin-line"></i>
+                            删除
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="glass-card p-6">
+                  <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="ri-user-group-line"></i>
+                    用户管理
+                  </h3>
+                  <div class="space-y-3">
+                    <div v-for="user in users" :key="user.id" 
+                         class="glass-card p-4 hover:bg-white/10 transition-all">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                            <span class="text-lg font-bold">{{ user.username.charAt(0) }}</span>
+                          </div>
+                          <div>
+                            <p class="font-semibold">{{ user.username }}</p>
+                            <p class="text-sm text-muted">{{ user.email }}</p>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          <span :class="['px-3 py-1 rounded-full text-xs font-medium', user.role === 'ADMIN' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400']">
+                            {{ user.role === 'ADMIN' ? '管理员' : '市民' }}
+                          </span>
+                          <button v-if="user.role !== 'ADMIN'" class="btn-ghost text-xs text-red-400 hover:text-red-300">
+                            <i class="ri-ban-line"></i>
+                            禁用
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
       </main>
     </div>
 
-    <el-dialog v-model="showSubmitDialog" title="提交投诉" width="500px">
+    <el-dialog v-model="showSubmitDialog" title="提交投诉" width="600px">
       <div class="space-y-4">
         <el-form-item label="投诉标题">
           <el-input v-model="submitForm.title" placeholder="请输入投诉标题" />
         </el-form-item>
         <el-form-item label="投诉内容">
-          <el-input v-model="submitForm.content" type="textarea" rows="4" placeholder="请详细描述您的投诉内容..." />
+          <el-input v-model="submitForm.content" type="textarea" rows="5" placeholder="请详细描述您的投诉内容..." />
         </el-form-item>
         <el-form-item label="投诉类型">
           <el-select v-model="submitForm.category" placeholder="请选择投诉类型">
@@ -284,35 +745,196 @@
         </el-form-item>
       </div>
       <template #footer>
-        <el-button @click="showSubmitDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitComplaint" :loading="submitting">提交投诉</el-button>
+        <button class="btn-ghost" @click="showSubmitDialog = false">取消</button>
+        <button class="btn-gradient" @click="submitComplaint" :loading="submitting">提交投诉</button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showDetailDialog" title="投诉详情" width="600px">
-      <div v-if="selectedComplaint" class="space-y-4">
+    <el-dialog v-model="showAnalysisDialog" title="OpenClaw AI 智能分析" width="700px" :close-on-click-modal="false">
+      <div v-if="showAnalysisDialog" class="space-y-6">
+        <div class="flex items-center gap-4 p-4 glass-card">
+          <div class="ai-avatar">
+            <i class="ri-robot-line"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-lg">OpenClaw 智能分析引擎</h4>
+            <p class="text-sm text-muted">正在分析您的投诉内容...</p>
+          </div>
+        </div>
+
+        <div class="scan-animation p-4 glass-card">
+          <p class="text-sm text-secondary">投诉内容</p>
+          <p class="mt-2 text-primary">{{ analyzingComplaint?.content }}</p>
+        </div>
+
+        <div class="grid grid-cols-4 gap-3">
+          <div :class="['analysis-step', analysisSteps[0].status]" :key="0">
+            <div :class="['analysis-icon', analysisSteps[0].status]">
+              <i class="ri-file-text-line"></i>
+            </div>
+            <p class="mt-2 text-xs text-center">{{ analysisSteps[0].label }}</p>
+            <p v-if="analysisSteps[0].status === 'completed'" class="text-xs text-center text-green-400">完成</p>
+          </div>
+          <div :class="['analysis-step', analysisSteps[1].status]" :key="1">
+            <div :class="['analysis-icon', analysisSteps[1].status]">
+              <i class="ri-tag-line"></i>
+            </div>
+            <p class="mt-2 text-xs text-center">{{ analysisSteps[1].label }}</p>
+            <p v-if="analysisSteps[1].status === 'completed'" class="text-xs text-center text-green-400">完成</p>
+          </div>
+          <div :class="['analysis-step', analysisSteps[2].status]" :key="2">
+            <div :class="['analysis-icon', analysisSteps[2].status]">
+              <i class="ri-brain-line"></i>
+            </div>
+            <p class="mt-2 text-xs text-center">{{ analysisSteps[2].label }}</p>
+            <p v-if="analysisSteps[2].status === 'completed'" class="text-xs text-center text-green-400">完成</p>
+          </div>
+          <div :class="['analysis-step', analysisSteps[3].status]" :key="3">
+            <div :class="['analysis-icon', analysisSteps[3].status]">
+              <i class="ri-mail-send-line"></i>
+            </div>
+            <p class="mt-2 text-xs text-center">{{ analysisSteps[3].label }}</p>
+            <p v-if="analysisSteps[3].status === 'completed'" class="text-xs text-center text-green-400">完成</p>
+          </div>
+        </div>
+
+        <div v-if="analysisResult" class="space-y-4">
+          <div class="glass-card p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium">智能分类</span>
+              <span class="category-tag">{{ analysisResult.category }}</span>
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-muted">置信度</span>
+                <span class="text-purple-400">{{ (analysisResult.confidence * 100).toFixed(1) }}%</span>
+              </div>
+              <div class="confidence-bar">
+                <div class="confidence-fill" :style="{ width: (analysisResult.confidence * 100) + '%' }"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card p-4">
+            <span class="text-sm font-medium mb-3 block">关键词提取</span>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="keyword in analysisResult.keywords" :key="keyword" class="keyword-tag">
+                <i class="ri-tag-line text-xs"></i>
+                {{ keyword }}
+              </span>
+            </div>
+          </div>
+
+          <div class="glass-card p-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium">意图识别</span>
+              <span :class="['px-3 py-1 rounded-full text-xs font-medium', analysisResult.intent === 'complaint' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400']">
+                {{ analysisResult.intent === 'complaint' ? '投诉' : '报告' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-sm font-medium">紧急程度</span>
+              <span :class="['px-3 py-1 rounded-full text-xs font-medium', 
+                analysisResult.urgency === 'high' ? 'bg-red-500/20 text-red-400' : 
+                analysisResult.urgency === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400']">
+                {{ analysisResult.urgency === 'high' ? '高' : analysisResult.urgency === 'medium' ? '中' : '低' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="glass-card p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <i class="ri-robot-line text-purple-400"></i>
+              <span class="text-sm font-medium">AI自动回复</span>
+            </div>
+            <div v-if="isGeneratingReply" class="flex items-center gap-2 py-4">
+              <div class="typing-indicator">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="text-sm text-muted">正在生成回复...</span>
+            </div>
+            <div v-else-if="generatedReply" class="p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+              <p class="text-secondary">{{ generatedReply }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button v-if="!analysisCompleted" class="btn-ghost" disabled>分析中...</button>
+        <button v-else class="btn-gradient" @click="confirmAnalysis">确认并提交</button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showDetailDialog" title="投诉详情" width="700px">
+      <div v-if="selectedComplaint" class="space-y-6">
         <div class="flex items-center gap-3">
           <span class="category-tag">{{ selectedComplaint.category }}</span>
-          <span :class="['status-badge', 'status-' + selectedComplaint.status]">{{ selectedComplaint.statusText }}</span>
+          <span :class="['status-badge', 'status-' + selectedComplaint.status]">
+            <i v-if="selectedComplaint.status === 'analyzing'" class="ri-loader-4-line animate-spin"></i>
+            <i v-else-if="selectedComplaint.status === 'auto-replied'" class="ri-robot-line"></i>
+            <i v-else-if="selectedComplaint.status === 'pending'" class="ri-clock-line"></i>
+            <i v-else-if="selectedComplaint.status === 'processing'" class="ri-loader-4-line animate-spin"></i>
+            <i v-else-if="selectedComplaint.status === 'resolved'" class="ri-check-circle-line"></i>
+            <i v-else class="ri-close-circle-line"></i>
+            {{ selectedComplaint.statusText }}
+          </span>
         </div>
-        <h3 class="text-lg font-semibold text-gray-800">{{ selectedComplaint.title }}</h3>
-        <p class="text-gray-600">{{ selectedComplaint.content }}</p>
-        <div class="flex items-center gap-6 text-sm text-gray-500">
-          <span>提交人: {{ selectedComplaint.userName }}</span>
-          <span>提交时间: {{ selectedComplaint.createdAt }}</span>
+        <h3 class="text-xl font-bold">{{ selectedComplaint.title }}</h3>
+        <p class="text-secondary leading-relaxed">{{ selectedComplaint.content }}</p>
+        <div class="flex items-center gap-6 text-sm text-muted">
+          <span class="flex items-center gap-2">
+            <i class="ri-user-line"></i>
+            {{ selectedComplaint.userName }}
+          </span>
+          <span class="flex items-center gap-2">
+            <i class="ri-calendar-line"></i>
+            {{ selectedComplaint.createdAt }}
+          </span>
         </div>
-        <div v-if="selectedComplaint.reply" class="p-4 bg-blue-50 rounded-lg">
-          <h4 class="text-sm font-semibold text-blue-600 mb-2">系统自动回复</h4>
-          <p class="text-gray-700">{{ selectedComplaint.reply }}</p>
+        <div v-if="selectedComplaint.analysis" class="glass-card p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="ri-brain-circuit-line text-purple-400"></i>
+            <span class="text-sm font-medium">AI分析结果</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span v-for="keyword in selectedComplaint.analysis.keywords" :key="keyword" class="keyword-tag">
+              <i class="ri-tag-line text-xs"></i>
+              {{ keyword }}
+            </span>
+          </div>
+          <div class="flex items-center gap-4 mt-3 text-xs">
+            <span class="text-muted">意图: {{ selectedComplaint.analysis.intent === 'complaint' ? '投诉' : '报告' }}</span>
+            <span class="text-muted">紧急度: {{ selectedComplaint.analysis.urgency === 'high' ? '高' : selectedComplaint.analysis.urgency === 'medium' ? '中' : '低' }}</span>
+            <span class="text-muted">置信度: {{ (selectedComplaint.analysis.confidence * 100).toFixed(1) }}%</span>
+          </div>
         </div>
-        <div v-else class="p-4 bg-gray-50 rounded-lg text-gray-400">
-          暂无回复
+        <div v-if="selectedComplaint.reply" class="p-5 glass-card">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+              <i class="ri-robot-line text-white"></i>
+            </div>
+            <div>
+              <h4 class="font-semibold mb-2">AI自动回复</h4>
+              <p class="text-secondary">{{ selectedComplaint.reply }}</p>
+            </div>
+          </div>
+        </div>
+        <div v-else class="p-5 glass-card text-center text-muted">
+          <i class="ri-message-wait-line text-3xl mb-2"></i>
+          <p>暂无回复</p>
         </div>
       </div>
     </el-dialog>
 
-    <el-dialog v-model="showLoginDialog" title="用户登录" width="400px">
+    <el-dialog v-model="showLoginDialog" title="用户登录" width="450px">
       <div class="space-y-4">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-3">
+            <i class="ri-user-line text-3xl text-white"></i>
+          </div>
+          <h4 class="font-semibold">欢迎登录</h4>
+          <p class="text-sm text-muted">请输入您的账号信息</p>
+        </div>
         <el-form-item label="用户名">
           <el-input v-model="loginForm.username" placeholder="请输入用户名" />
         </el-form-item>
@@ -323,12 +945,12 @@
           <label class="el-checkbox">
             <input type="checkbox" v-model="loginForm.rememberMe" /> 记住我
           </label>
-          <a href="#" class="text-sm text-blue-600">忘记密码？</a>
+          <a href="#" class="text-sm text-indigo-400 hover:text-indigo-300">忘记密码？</a>
         </div>
       </div>
       <template #footer>
-        <el-button @click="showLoginDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleLogin" :loading="loggingIn">登录</el-button>
+        <button class="btn-ghost" @click="showLoginDialog = false">取消</button>
+        <button class="btn-gradient" @click="handleLogin" :loading="loggingIn">登录</button>
       </template>
     </el-dialog>
   </div>
@@ -342,12 +964,26 @@
         const currentUser = ref(null);
         const showSubmitDialog = ref(false);
         const showDetailDialog = ref(false);
+        const showAnalysisDialog = ref(false);
         const showLoginDialog = ref(false);
         const selectedComplaint = ref(null);
         const submitting = ref(false);
         const loggingIn = ref(false);
         const filterStatus = ref('');
         const searchKeyword = ref('');
+
+        const analysisSteps = ref([
+          { label: '文本解析', status: 'pending' },
+          { label: '智能分类', status: 'pending' },
+          { label: '意图识别', status: 'pending' },
+          { label: '回复生成', status: 'pending' }
+        ]);
+
+        const analysisResult = ref(null);
+        const generatedReply = ref('');
+        const isGeneratingReply = ref(false);
+        const analysisCompleted = ref(false);
+        const analyzingComplaint = ref(null);
 
         const categories = ['环境卫生', '噪音扰民', '交通拥堵', '公共设施', '物业管理', '食品安全', '医疗服务', '教育问题', '消费维权', '其他'];
 
@@ -364,15 +1000,41 @@
           rememberMe: false
         });
 
+        const categoryKeywords = {
+          '环境卫生': ['垃圾', '污染', '异味', '清洁', '卫生'],
+          '噪音扰民': ['噪音', '吵闹', '喧哗', '扰民', '分贝'],
+          '交通拥堵': ['堵车', '拥堵', '红绿灯', '违章', '停车'],
+          '公共设施': ['路灯', '井盖', '设施', '损坏', '维修'],
+          '物业管理': ['物业', '电梯', '物业费', '管理', '服务'],
+          '食品安全': ['食品', '卫生', '安全', '小吃', '餐馆'],
+          '医疗服务': ['医院', '挂号', '医生', '看病', '医疗'],
+          '教育问题': ['学校', '老师', '教育', '学生', '补课'],
+          '消费维权': ['消费', '维权', '商家', '欺骗', '退款'],
+          '其他': []
+        };
+
+        const replyTemplates = {
+          '环境卫生': '您好！您反映的环境卫生问题已收到，我们会尽快安排工作人员前往处理。',
+          '噪音扰民': '您好！噪音问题已记录，我们会立即调查并督促相关方整改。',
+          '交通拥堵': '您好！交通问题已上报，相关部门会尽快优化交通组织。',
+          '公共设施': '您好！公共设施故障已上报，维修人员会尽快到场修复。',
+          '物业管理': '您好！已联系物业督促整改，请耐心等待处理结果。',
+          '食品安全': '您好！食品安全问题已收到，我们会立即组织检查。',
+          '医疗服务': '您好！医疗服务建议已记录，我们会反馈给相关部门。',
+          '教育问题': '您好！教育问题已收到，我们会协调相关部门处理。',
+          '消费维权': '您好！消费维权问题已记录，我们会介入调查。',
+          '其他': '您好！您的投诉已收到，我们会尽快处理。'
+        };
+
         const complaints = ref([
-          { id: 1, title: '小区垃圾桶长期未清理', content: '我们小区3号楼楼下的垃圾桶已经一个星期没有清理了，夏天天气炎热，气味非常难闻，严重影响居民生活。希望相关部门能尽快处理。', category: '环境卫生', status: 'resolved', statusText: '已解决', createdAt: '2024-01-15 10:30', userName: '张女士', reply: '您好！您反映的问题已收到。我们已安排环卫工人前往清理，并会加强该区域的垃圾清运频次。感谢您的反馈！' },
-          { id: 2, title: '夜间施工噪音严重影响休息', content: '近期小区对面的建筑工地经常夜间施工，噪音非常大，严重影响我们的正常休息。希望能督促施工方遵守规定，禁止夜间施工。', category: '噪音扰民', status: 'processing', statusText: '处理中', createdAt: '2024-01-14 22:15', userName: '李先生', reply: '您好！已收到您的投诉。我们会立即联系施工单位，要求其停止夜间施工，并加强监督检查。' },
-          { id: 3, title: '主干道交通信号灯故障', content: '市中心主干道与解放路交叉口的交通信号灯已经坏了两天，导致交通秩序混乱，存在很大安全隐患。', category: '公共设施', status: 'pending', statusText: '待处理', createdAt: '2024-01-14 08:45', userName: '王师傅', reply: '' },
-          { id: 4, title: '物业公司不作为', content: '我们小区物业长期不作为，电梯经常故障无人维修，绿化也无人打理，物业费却照常收取。', category: '物业管理', status: 'pending', statusText: '待处理', createdAt: '2024-01-13 14:20', userName: '赵女士', reply: '' },
-          { id: 5, title: '学校周边小吃摊食品安全问题', content: '学校门口的小吃摊卫生状况堪忧，孩子们经常在那里买零食吃，很担心食品安全问题。', category: '食品安全', status: 'processing', statusText: '处理中', createdAt: '2024-01-13 09:00', userName: '陈家长', reply: '您好！我们已组织执法人员对学校周边小吃摊进行检查，对不符合卫生标准的摊位进行了整改。' },
-          { id: 6, title: '医院挂号排队时间过长', content: '去市人民医院看病，光挂号就排了两个小时的队，希望能优化挂号流程，方便患者就医。', category: '医疗服务', status: 'resolved', statusText: '已解决', createdAt: '2024-01-12 11:30', userName: '刘先生', reply: '您好！感谢您的建议。我们已增加挂号窗口，并开通了网上预约挂号服务，您可以提前在网上预约。' },
-          { id: 7, title: '道路积水严重', content: '每次下雨，幸福路都会严重积水，车辆难以通行，行人更是寸步难行。希望能改善排水系统。', category: '公共设施', status: 'pending', statusText: '待处理', createdAt: '2024-01-12 07:20', userName: '孙女士', reply: '' },
-          { id: 8, title: '广场舞噪音扰民', content: '每天早上6点和晚上8点，小区广场上都有广场舞，声音开得很大，严重影响孩子学习和老人休息。', category: '噪音扰民', status: 'resolved', statusText: '已解决', createdAt: '2024-01-11 20:00', userName: '周先生', reply: '您好！已协调广场舞团队调整活动时间和音量，避免影响居民正常生活。' }
+          { id: 1, title: '小区垃圾桶长期未清理', content: '我们小区3号楼楼下的垃圾桶已经一个星期没有清理了，夏天天气炎热，气味非常难闻，严重影响居民生活。希望相关部门能尽快处理。', category: '环境卫生', status: 'auto-replied', statusText: 'AI已回复', createdAt: '2024-01-15 10:30', userName: '张女士', reply: '您好！您反映的环境卫生问题已收到，我们会尽快安排工作人员前往处理。', analysis: { category: '环境卫生', confidence: 0.92, intent: 'complaint', keywords: ['垃圾', '清理', '气味', '环境卫生'], sentiment: 'negative', urgency: 'medium' } },
+          { id: 2, title: '夜间施工噪音严重影响休息', content: '近期小区对面的建筑工地经常夜间施工，噪音非常大，严重影响我们的正常休息。希望能督促施工方遵守规定，禁止夜间施工。', category: '噪音扰民', status: 'processing', statusText: '处理中', createdAt: '2024-01-14 22:15', userName: '李先生', reply: '您好！噪音问题已记录，我们会立即调查并督促相关方整改。', analysis: { category: '噪音扰民', confidence: 0.95, intent: 'complaint', keywords: ['施工', '噪音', '夜间', '扰民'], sentiment: 'negative', urgency: 'high' } },
+          { id: 3, title: '主干道交通信号灯故障', content: '市中心主干道与解放路交叉口的交通信号灯已经坏了两天，导致交通秩序混乱，存在很大安全隐患。', category: '公共设施', status: 'analyzing', statusText: 'AI分析中', createdAt: '2024-01-14 08:45', userName: '王师傅', reply: '', analysis: null },
+          { id: 4, title: '物业公司不作为', content: '我们小区物业长期不作为，电梯经常故障无人维修，绿化也无人打理，物业费却照常收取。', category: '物业管理', status: 'pending', statusText: '待处理', createdAt: '2024-01-13 14:20', userName: '赵女士', reply: '', analysis: null },
+          { id: 5, title: '学校周边小吃摊食品安全问题', content: '学校门口的小吃摊卫生状况堪忧，孩子们经常在那里买零食吃，很担心食品安全问题。', category: '食品安全', status: 'processing', statusText: '处理中', createdAt: '2024-01-13 09:00', userName: '陈家长', reply: '您好！食品安全问题已收到，我们会立即组织检查。', analysis: { category: '食品安全', confidence: 0.88, intent: 'complaint', keywords: ['小吃摊', '食品安全', '学校', '卫生'], sentiment: 'negative', urgency: 'high' } },
+          { id: 6, title: '医院挂号排队时间过长', content: '去市人民医院看病，光挂号就排了两个小时的队，希望能优化挂号流程，方便患者就医。', category: '医疗服务', status: 'auto-replied', statusText: 'AI已回复', createdAt: '2024-01-12 11:30', userName: '刘先生', reply: '您好！医疗服务建议已记录，我们会反馈给相关部门。', analysis: { category: '医疗服务', confidence: 0.85, intent: 'complaint', keywords: ['挂号', '排队', '医院', '医疗'], sentiment: 'negative', urgency: 'medium' } },
+          { id: 7, title: '道路积水严重', content: '每次下雨，幸福路都会严重积水，车辆难以通行，行人更是寸步难行。希望能改善排水系统。', category: '公共设施', status: 'pending', statusText: '待处理', createdAt: '2024-01-12 07:20', userName: '孙女士', reply: '', analysis: null },
+          { id: 8, title: '广场舞噪音扰民', content: '每天早上6点和晚上8点，小区广场上都有广场舞，声音开得很大，严重影响孩子学习和老人休息。', category: '噪音扰民', status: 'auto-replied', statusText: 'AI已回复', createdAt: '2024-01-11 20:00', userName: '周先生', reply: '您好！噪音问题已记录，我们会立即调查并督促相关方整改。', analysis: { category: '噪音扰民', confidence: 0.93, intent: 'complaint', keywords: ['广场舞', '噪音', '扰民', '休息'], sentiment: 'negative', urgency: 'medium' } }
         ]);
 
         const users = ref([
@@ -381,7 +1043,7 @@
           { id: 3, username: '李先生', email: 'li@example.com', role: 'CITIZEN' }
         ]);
 
-        const replyTemplates = ref([
+        const replyTemplatesList = ref([
           { id: 1, category: '环境卫生', content: '您好！您反映的环境卫生问题已收到，我们会尽快安排工作人员前往处理。' },
           { id: 2, category: '噪音扰民', content: '您好！噪音问题已记录，我们会立即调查并督促相关方整改。' },
           { id: 3, category: '公共设施', content: '您好！公共设施故障已上报，维修人员会尽快到场修复。' },
@@ -392,7 +1054,8 @@
           total: complaints.value.length,
           totalPending: complaints.value.filter(c => c.status === 'pending').length,
           totalProcessing: complaints.value.filter(c => c.status === 'processing').length,
-          totalResolved: complaints.value.filter(c => c.status === 'resolved').length
+          totalResolved: complaints.value.filter(c => c.status === 'resolved' || c.status === 'auto-replied').length,
+          totalAutoReplied: complaints.value.filter(c => c.status === 'auto-replied').length
         }));
 
         const userStats = computed(() => ({
@@ -420,33 +1083,106 @@
           return complaints.value.filter(c => c.userName === currentUser.value.username);
         });
 
+        const simulateOpenClawAnalysis = async (content, title) => {
+          let detectedCategory = '其他';
+          for (const [cat, keywords] of Object.entries(categoryKeywords)) {
+            if (keywords.some(kw => content.includes(kw))) {
+              detectedCategory = cat;
+              break;
+            }
+          }
+
+          const keywordList = [];
+          for (const kw of categoryKeywords[detectedCategory]) {
+            if (content.includes(kw)) {
+              keywordList.push(kw);
+            }
+          }
+
+          const urgency = keywordList.length >= 3 ? 'high' : keywordList.length >= 1 ? 'medium' : 'low';
+
+          return {
+            category: detectedCategory,
+            confidence: 0.85 + Math.random() * 0.12,
+            intent: 'complaint',
+            keywords: keywordList.length > 0 ? keywordList : ['投诉', '问题'],
+            sentiment: 'negative',
+            urgency: urgency
+          };
+        };
+
+        const runAnalysisSteps = async () => {
+          analysisSteps.value = [
+            { label: '文本解析', status: 'pending' },
+            { label: '智能分类', status: 'pending' },
+            { label: '意图识别', status: 'pending' },
+            { label: '回复生成', status: 'pending' }
+          ];
+          analysisResult.value = null;
+          generatedReply.value = '';
+          isGeneratingReply.value = false;
+          analysisCompleted.value = false;
+
+          await new Promise(r => setTimeout(r, 500));
+          analysisSteps.value[0].status = 'active';
+          await new Promise(r => setTimeout(r, 1000));
+          analysisSteps.value[0].status = 'completed';
+
+          await new Promise(r => setTimeout(r, 300));
+          analysisSteps.value[1].status = 'active';
+          await new Promise(r => setTimeout(r, 1200));
+          analysisResult.value = await simulateOpenClawAnalysis(analyzingComplaint.value.content, analyzingComplaint.value.title);
+          analysisSteps.value[1].status = 'completed';
+
+          await new Promise(r => setTimeout(r, 300));
+          analysisSteps.value[2].status = 'active';
+          await new Promise(r => setTimeout(r, 800));
+          analysisSteps.value[2].status = 'completed';
+
+          await new Promise(r => setTimeout(r, 300));
+          analysisSteps.value[3].status = 'active';
+          isGeneratingReply.value = true;
+          await new Promise(r => setTimeout(r, 1500));
+          generatedReply.value = replyTemplates[analysisResult.value.category] || '您好！您的投诉已收到，我们会尽快处理。';
+          isGeneratingReply.value = false;
+          analysisSteps.value[3].status = 'completed';
+          analysisCompleted.value = true;
+        };
+
         const submitComplaint = async () => {
           if (!submitForm.value.title || !submitForm.value.content) {
             ElementPlus.ElMessage.warning('请填写标题和内容');
             return;
           }
-          submitting.value = true;
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          const template = replyTemplates.value.find(t => t.category === submitForm.value.category);
-          const autoReply = template ? template.content : '您好！您的投诉已收到，我们会尽快处理。';
 
+          analyzingComplaint.value = {
+            title: submitForm.value.title,
+            content: submitForm.value.content
+          };
+
+          showSubmitDialog.value = false;
+          showAnalysisDialog.value = true;
+
+          await runAnalysisSteps();
+        };
+
+        const confirmAnalysis = () => {
           complaints.value.unshift({
             id: Date.now(),
-            title: submitForm.value.title,
-            content: submitForm.value.content,
-            category: submitForm.value.category || '其他',
-            status: 'pending',
-            statusText: '待处理',
+            title: analyzingComplaint.value.title,
+            content: analyzingComplaint.value.content,
+            category: analysisResult.value.category,
+            status: 'auto-replied',
+            statusText: 'AI已回复',
             createdAt: new Date().toLocaleString('zh-CN'),
             userName: currentUser.value ? currentUser.value.username : '匿名用户',
-            reply: autoReply
+            reply: generatedReply.value,
+            analysis: analysisResult.value
           });
 
-          ElementPlus.ElMessage.success('投诉提交成功！系统已自动生成回复');
-          showSubmitDialog.value = false;
-          submitForm.value = { title: '', content: '', category: '', contact: '' };
-          submitting.value = false;
+          showAnalysisDialog.value = false;
+          ElementPlus.ElMessage.success('投诉提交成功！OpenClaw AI已自动生成回复');
+          currentTab.value = 'complaints';
         };
 
         const viewComplaint = (complaint) => {
@@ -455,9 +1191,14 @@
         };
 
         const processComplaint = (complaint) => {
-          complaint.status = 'processing';
-          complaint.statusText = '处理中';
-          ElementPlus.ElMessage.success('已开始处理该投诉');
+          analyzingComplaint.value = {
+            title: complaint.title,
+            content: complaint.content
+          };
+          complaint.status = 'analyzing';
+          complaint.statusText = 'AI分析中';
+          showAnalysisDialog.value = true;
+          runAnalysisSteps();
         };
 
         const toggleLogin = () => {
@@ -482,105 +1223,4 @@
             role: loginForm.value.username === 'admin' ? 'ADMIN' : 'CITIZEN'
           };
           showLoginDialog.value = false;
-          ElementPlus.ElMessage.success('登录成功');
-          loggingIn.value = false;
-        };
-
-        const editTemplate = (template) => {
-          ElementPlus.ElMessage.info(`编辑模板: ${template.category}`);
-        };
-
-        const addTemplate = () => {
-          ElementPlus.ElMessage.info('添加新模板');
-        };
-
-        let typeChart = null;
-        let trendChart = null;
-
-        const initCharts = () => {
-          nextTick(() => {
-            const typeChartEl = document.querySelector('.h-64');
-            if (typeChartEl) {
-              typeChart = echarts.init(typeChartEl);
-              typeChart.setOption({
-                tooltip: { trigger: 'item' },
-                legend: { bottom: 0 },
-                series: [{
-                  type: 'pie',
-                  radius: ['40%', '70%'],
-                  avoidLabelOverlap: false,
-                  itemStyle: { borderRadius: 10 },
-                  label: { show: false },
-                  emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-                  data: [
-                    { value: 3, name: '环境卫生', itemStyle: { color: '#f59e0b' } },
-                    { value: 2, name: '噪音扰民', itemStyle: { color: '#3b82f6' } },
-                    { value: 2, name: '公共设施', itemStyle: { color: '#10b981' } },
-                    { value: 1, name: '物业管理', itemStyle: { color: '#8b5cf6' } },
-                    { value: 1, name: '食品安全', itemStyle: { color: '#ef4444' } },
-                    { value: 1, name: '医疗服务', itemStyle: { color: '#ec4899' } }
-                  ]
-                }]
-              });
-            }
-
-            const trendChartEl = document.querySelectorAll('.h-64')[1];
-            if (trendChartEl) {
-              trendChart = echarts.init(trendChartEl);
-              trendChart.setOption({
-                tooltip: { trigger: 'axis' },
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                xAxis: { type: 'category', data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
-                yAxis: { type: 'value' },
-                series: [
-                  { name: '收到投诉', type: 'line', data: [12, 15, 8, 20, 18, 10, 14], smooth: true },
-                  { name: '已处理', type: 'line', data: [10, 12, 8, 15, 16, 8, 12], smooth: true }
-                ]
-              });
-            }
-          });
-        };
-
-        onMounted(() => {
-          initCharts();
-          window.addEventListener('resize', () => {
-            typeChart && typeChart.resize();
-            trendChart && trendChart.resize();
-          });
-        });
-
-        return {
-          currentTab,
-          currentUser,
-          showSubmitDialog,
-          showDetailDialog,
-          showLoginDialog,
-          selectedComplaint,
-          submitting,
-          loggingIn,
-          filterStatus,
-          searchKeyword,
-          categories,
-          submitForm,
-          loginForm,
-          complaints,
-          users,
-          replyTemplates,
-          stats,
-          userStats,
-          latestComplaints,
-          filteredComplaints,
-          myComplaints,
-          submitComplaint,
-          viewComplaint,
-          processComplaint,
-          toggleLogin,
-          handleLogin,
-          editTemplate,
-          addTemplate
-        };
-      }
-    }).use(ElementPlus).mount('#app');
-  </script>
-</body>
-</html>
+          Element

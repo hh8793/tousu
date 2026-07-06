@@ -45,6 +45,21 @@
             </span>
           </div>
 
+          <div v-if="complaint.analysisResult" class="analysis-preview">
+            <div class="ai-badge">
+              <span class="ai-icon">🤖</span>
+              <span>OpenClaw AI 已分析</span>
+            </div>
+            <div class="analysis-tags">
+              <span v-for="keyword in complaint.analysisResult.keywords.slice(0, 3)" :key="keyword" class="keyword-tag">
+                {{ keyword }}
+              </span>
+            </div>
+            <el-button type="text" class="view-detail-btn" @click="viewDetail(complaint)">
+              查看分析详情 →
+            </el-button>
+          </div>
+
           <div v-if="complaint.replies && complaint.replies.length > 0" class="replies-section">
             <h4>回复记录</h4>
             <div v-for="reply in complaint.replies" :key="reply._id" class="reply-item">
@@ -60,11 +75,11 @@
               <span
                 v-for="star in 5"
                 :key="star"
-                :class="['star', { active: star <= rating }]"
-                @click="rating = star"
+                :class="['star', { active: star <= getRating(complaint._id!) }]"
+                @click="setRating(complaint._id!, star)"
               >⭐</span>
             </div>
-            <el-button type="primary" @click="submitSatisfaction(complaint._id)">提交评价</el-button>
+            <el-button type="primary" @click="submitSatisfaction(complaint._id!)">提交评价</el-button>
           </div>
 
           <div v-if="complaint.satisfaction" class="satisfaction-display">
@@ -80,6 +95,107 @@
         </div>
       </div>
     </div>
+
+    <el-dialog v-model="detailDialogVisible" title="投诉详情" width="700px" class="detail-dialog">
+      <div v-if="selectedComplaint" class="complaint-detail">
+        <div class="detail-header">
+          <h3>{{ selectedComplaint.title }}</h3>
+          <span :class="['status-tag', selectedComplaint.status]">{{ getStatusLabel(selectedComplaint.status) }}</span>
+        </div>
+
+        <div class="detail-info-row">
+          <div class="info-item">
+            <span class="info-label">投诉类型</span>
+            <span class="info-value">{{ getCategoryLabel(selectedComplaint.category) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">提交时间</span>
+            <span class="info-value">{{ formatDate(selectedComplaint.createdAt) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">优先级</span>
+            <span :class="['priority-tag', selectedComplaint.priority]">{{ getPriorityLabel(selectedComplaint.priority) }}</span>
+          </div>
+        </div>
+
+        <div class="detail-content">
+          <h4>投诉内容</h4>
+          <p>{{ selectedComplaint.content }}</p>
+        </div>
+
+        <div v-if="selectedComplaint.analysisResult" class="ai-analysis-section">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="section-icon">🤖</span>
+              <span>OpenClaw 智能分析结果</span>
+            </div>
+            <span class="analysis-badge">分析完成</span>
+          </div>
+
+          <div class="analysis-grid">
+            <div class="analysis-card category-card">
+              <div class="card-icon">🏷️</div>
+              <div class="card-content">
+                <span class="card-label">智能分类</span>
+                <span class="card-value">{{ getCategoryLabel(selectedComplaint.analysisResult.category) }}</span>
+                <div class="confidence-bar">
+                  <div class="confidence-fill" :style="{ width: (selectedComplaint.analysisResult.confidence * 100) + '%' }"></div>
+                </div>
+                <span class="confidence-text">置信度 {{ (selectedComplaint.analysisResult.confidence * 100).toFixed(1) }}%</span>
+              </div>
+            </div>
+
+            <div class="analysis-card intent-card">
+              <div class="card-icon">🎯</div>
+              <div class="card-content">
+                <span class="card-label">用户意图</span>
+                <span class="card-value">{{ getIntentLabel(selectedComplaint.analysisResult.intent) }}</span>
+              </div>
+            </div>
+
+            <div class="analysis-card urgency-card">
+              <div class="card-icon">⚡</div>
+              <div class="card-content">
+                <span class="card-label">紧急程度</span>
+                <span :class="['urgency-tag', selectedComplaint.analysisResult.urgency]">
+                  {{ getUrgencyLabel(selectedComplaint.analysisResult.urgency) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="analysis-card sentiment-card">
+              <div class="card-icon">💭</div>
+              <div class="card-content">
+                <span class="card-label">情感分析</span>
+                <span :class="['sentiment-tag', selectedComplaint.analysisResult.sentiment]">
+                  {{ getSentimentLabel(selectedComplaint.analysisResult.sentiment) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="keywords-section">
+            <span class="keywords-label">🔑 关键词提取</span>
+            <div class="keywords-list">
+              <span v-for="keyword in selectedComplaint.analysisResult.keywords" :key="keyword" class="keyword-tag">
+                {{ keyword }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedComplaint.replies && selectedComplaint.replies.length > 0" class="replies-section">
+          <h4>回复记录</h4>
+          <div v-for="reply in selectedComplaint.replies" :key="reply._id" class="reply-item">
+            <div class="reply-header">
+              <span :class="['reply-type', reply.type]">{{ reply.type === 'auto' ? '🤖 自动回复' : '👤 人工回复' }}</span>
+              <span class="reply-time">{{ formatDate(reply.createdAt) }}</span>
+            </div>
+            <p class="reply-content">{{ reply.content }}</p>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -91,7 +207,9 @@ import { ElMessage } from 'element-plus';
 
 const complaints = ref<Complaint[]>([]);
 const total = ref(0);
-const rating = ref(0);
+const ratings = ref<Record<string, number>>({});
+const detailDialogVisible = ref(false);
+const selectedComplaint = ref<Complaint | null>(null);
 
 const filters = reactive({
   status: ''
@@ -132,19 +250,38 @@ const handlePageChange = (page: number) => {
   loadComplaints();
 };
 
+const getRating = (id: string): number => {
+  return ratings.value[id] || 0;
+};
+
+const setRating = (id: string, star: number) => {
+  ratings.value[id] = star;
+};
+
 const submitSatisfaction = async (id: string) => {
-  if (!rating.value) {
+  const rating = getRating(id);
+  if (!rating) {
     ElMessage.warning('请先选择评价星级');
     return;
   }
 
   try {
-    await complaintApi.submitSatisfaction(id, { rating: rating.value });
+    await complaintApi.submitSatisfaction(id, { rating });
     ElMessage.success('评价提交成功');
-    rating.value = 0;
+    ratings.value[id] = 0;
     loadComplaints();
   } catch (error) {
     ElMessage.error('提交评价失败');
+  }
+};
+
+const viewDetail = async (complaint: Complaint) => {
+  try {
+    const detail = await complaintApi.get(complaint._id!);
+    selectedComplaint.value = detail;
+    detailDialogVisible.value = true;
+  } catch (error) {
+    ElMessage.error('加载详情失败');
   }
 };
 
@@ -186,6 +323,34 @@ const getPriorityLabel = (priority: string): string => {
   return labels[priority] || priority;
 };
 
+const getIntentLabel = (intent: string): string => {
+  const labels: Record<string, string> = {
+    'complaint': '投诉举报',
+    'report': '问题反映',
+    'suggestion': '建议咨询',
+    'request': '请求帮助'
+  };
+  return labels[intent] || intent;
+};
+
+const getUrgencyLabel = (urgency: string): string => {
+  const labels: Record<string, string> = {
+    'low': '低',
+    'medium': '中',
+    'high': '高'
+  };
+  return labels[urgency] || urgency;
+};
+
+const getSentimentLabel = (sentiment: string): string => {
+  const labels: Record<string, string> = {
+    'positive': '正面',
+    'neutral': '中性',
+    'negative': '负面'
+  };
+  return labels[sentiment] || sentiment;
+};
+
 const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleString('zh-CN');
 };
@@ -198,32 +363,37 @@ onMounted(() => {
 <style scoped>
 .my-complaints-container {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .page-header {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
   padding: 1.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .page-header h1 {
   color: #333;
+  margin: 0;
 }
 
 .submit-link {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
   text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
 .submit-link:hover {
-  background: #5a6fd6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .complaints-content {
@@ -237,6 +407,10 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .filter-item {
@@ -246,14 +420,20 @@ onMounted(() => {
 .complaints-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .complaint-card {
   background: white;
   padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.complaint-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 
 .complaint-header {
@@ -266,12 +446,14 @@ onMounted(() => {
 .complaint-title {
   color: #333;
   margin: 0;
+  font-size: 1.1rem;
 }
 
 .status-tag {
   padding: 0.3rem 0.8rem;
-  border-radius: 4px;
+  border-radius: 20px;
   font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .status-tag.pending {
@@ -307,29 +489,79 @@ onMounted(() => {
 .complaint-content {
   color: #666;
   margin-bottom: 1rem;
+  line-height: 1.6;
 }
 
 .complaint-meta {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .meta-item {
   color: #999;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.analysis-preview {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e8eaf6 100%);
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ai-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.ai-icon {
+  font-size: 1rem;
+}
+
+.analysis-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.keyword-tag {
+  background: rgba(255, 255, 255, 0.6);
+  color: #5c6bc0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.view-detail-btn {
+  color: #667eea;
+  font-weight: 500;
 }
 
 .replies-section {
   background: #f8f9fa;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 1rem;
 }
 
 .replies-section h4 {
   color: #333;
   margin-bottom: 1rem;
+  font-size: 0.95rem;
 }
 
 .reply-item {
@@ -360,22 +592,25 @@ onMounted(() => {
 .reply-item p {
   color: #333;
   margin: 0.5rem 0;
+  line-height: 1.6;
 }
 
 .reply-time {
   color: #999;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .satisfaction-section {
   background: #fff8e1;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-top: 1rem;
 }
 
 .satisfaction-section p {
   margin: 0 0 1rem 0;
+  color: #f57c00;
+  font-weight: 500;
 }
 
 .rating-stars {
@@ -383,9 +618,14 @@ onMounted(() => {
 }
 
 .star {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   cursor: pointer;
   opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.star:hover {
+  transform: scale(1.2);
 }
 
 .star.active {
@@ -394,14 +634,22 @@ onMounted(() => {
 
 .satisfaction-display {
   background: #e8f5e9;
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
   margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #2e7d32;
+  font-weight: 500;
 }
 
 .empty-state {
   text-align: center;
-  padding: 4rem;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .empty-icon {
@@ -411,22 +659,322 @@ onMounted(() => {
 
 .empty-state p {
   color: #999;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
 }
 
 .empty-link {
   color: #667eea;
   text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
 }
 
 .empty-link:hover {
   text-decoration: underline;
 }
 
+.detail-dialog :deep(.el-dialog) {
+  border-radius: 20px;
+}
+
+.detail-dialog :deep(.el-dialog__header) {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #eee;
+}
+
+.detail-dialog :deep(.el-dialog__body) {
+  padding: 1.5rem 2rem;
+}
+
+.complaint-detail {
+  padding: 0;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.detail-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.3rem;
+}
+
+.detail-info-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.priority-tag {
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.priority-tag.low {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.priority-tag.medium {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.priority-tag.high {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.detail-content {
+  margin-bottom: 1.5rem;
+}
+
+.detail-content h4 {
+  color: #333;
+  margin-bottom: 0.8rem;
+  font-size: 1rem;
+}
+
+.detail-content p {
+  color: #666;
+  line-height: 1.8;
+  margin: 0;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.ai-analysis-section {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e8eaf6 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-icon {
+  font-size: 1.3rem;
+}
+
+.analysis-badge {
+  background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.analysis-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  gap: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.analysis-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.card-label {
+  font-size: 0.8rem;
+  color: #999;
+  font-weight: 500;
+}
+
+.card-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.confidence-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.confidence-text {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.urgency-tag {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.urgency-tag.low {
+  background: #4caf50;
+  color: white;
+}
+
+.urgency-tag.medium {
+  background: #ff9800;
+  color: white;
+}
+
+.urgency-tag.high {
+  background: #f44336;
+  color: white;
+}
+
+.sentiment-tag {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.sentiment-tag.positive {
+  background: #4caf50;
+  color: white;
+}
+
+.sentiment-tag.neutral {
+  background: #9e9e9e;
+  color: white;
+}
+
+.sentiment-tag.negative {
+  background: #f44336;
+  color: white;
+}
+
+.keywords-section {
+  background: rgba(255, 255, 255, 0.6);
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.keywords-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.8rem;
+}
+
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.replies-section .reply-item {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.8rem;
+}
+
+.replies-section .reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.replies-section .reply-content {
+  color: #333;
+  line-height: 1.6;
+  margin: 0;
+}
+
 @media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
   .filters {
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .filter-item {
+    width: 100%;
   }
 
   .complaint-header {
@@ -437,6 +985,15 @@ onMounted(() => {
 
   .complaint-meta {
     flex-wrap: wrap;
+  }
+
+  .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-info-row {
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 </style>

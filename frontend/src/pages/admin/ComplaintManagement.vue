@@ -86,18 +86,64 @@
           <span class="detail-label">详情：</span>
           <p>{{ selectedComplaint.content }}</p>
         </div>
-        <div v-if="selectedComplaint.analysisResult" class="analysis-section">
-          <h4>分析结果</h4>
-          <div class="analysis-row">
-            <span>分类：{{ getCategoryLabel(selectedComplaint.analysisResult.category) }}</span>
-            <span>置信度：{{ (selectedComplaint.analysisResult.confidence * 100).toFixed(1) }}%</span>
+        <div v-if="selectedComplaint.analysisResult" class="ai-analysis-section">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="section-icon">🤖</span>
+              <span>OpenClaw 智能分析结果</span>
+            </div>
+            <span class="analysis-badge">分析完成</span>
           </div>
-          <div class="analysis-row">
-            <span>意图：{{ selectedComplaint.analysisResult.intent }}</span>
-            <span>情感：{{ getSentimentLabel(selectedComplaint.analysisResult.sentiment) }}</span>
+
+          <div class="analysis-grid">
+            <div class="analysis-card category-card">
+              <div class="card-icon">🏷️</div>
+              <div class="card-content">
+                <span class="card-label">智能分类</span>
+                <span class="card-value">{{ getCategoryLabel(selectedComplaint.analysisResult.category) }}</span>
+                <div class="confidence-bar">
+                  <div class="confidence-fill" :style="{ width: (selectedComplaint.analysisResult.confidence * 100) + '%' }"></div>
+                </div>
+                <span class="confidence-text">置信度 {{ (selectedComplaint.analysisResult.confidence * 100).toFixed(1) }}%</span>
+              </div>
+            </div>
+
+            <div class="analysis-card intent-card">
+              <div class="card-icon">🎯</div>
+              <div class="card-content">
+                <span class="card-label">用户意图</span>
+                <span class="card-value">{{ getIntentLabel(selectedComplaint.analysisResult.intent) }}</span>
+              </div>
+            </div>
+
+            <div class="analysis-card urgency-card">
+              <div class="card-icon">⚡</div>
+              <div class="card-content">
+                <span class="card-label">紧急程度</span>
+                <span :class="['urgency-tag', selectedComplaint.analysisResult.urgency]">
+                  {{ getUrgencyLabel(selectedComplaint.analysisResult.urgency) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="analysis-card sentiment-card">
+              <div class="card-icon">💭</div>
+              <div class="card-content">
+                <span class="card-label">情感分析</span>
+                <span :class="['sentiment-tag', selectedComplaint.analysisResult.sentiment]">
+                  {{ getSentimentLabel(selectedComplaint.analysisResult.sentiment) }}
+                </span>
+              </div>
+            </div>
           </div>
-          <div class="analysis-row">
-            <span>关键词：{{ selectedComplaint.analysisResult.keywords.join(', ') }}</span>
+
+          <div class="keywords-section">
+            <span class="keywords-label">🔑 关键词提取</span>
+            <div class="keywords-list">
+              <span v-for="keyword in selectedComplaint.analysisResult.keywords" :key="keyword" class="keyword-tag">
+                {{ keyword }}
+              </span>
+            </div>
           </div>
         </div>
         <div v-if="selectedComplaint.replies && selectedComplaint.replies.length > 0" class="replies-section">
@@ -302,6 +348,25 @@ const getSentimentLabel = (sentiment: string): string => {
   return labels[sentiment] || sentiment;
 };
 
+const getIntentLabel = (intent: string): string => {
+  const labels: Record<string, string> = {
+    'complaint': '投诉举报',
+    'report': '问题反映',
+    'suggestion': '建议咨询',
+    'request': '请求帮助'
+  };
+  return labels[intent] || intent;
+};
+
+const getUrgencyLabel = (urgency: string): string => {
+  const labels: Record<string, string> = {
+    'low': '低',
+    'medium': '中',
+    'high': '高'
+  };
+  return labels[urgency] || urgency;
+};
+
 const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleString('zh-CN');
 };
@@ -420,22 +485,183 @@ onMounted(() => {
   color: #666;
 }
 
-.analysis-section {
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 8px;
+.ai-analysis-section {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e8eaf6 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
   margin: 1rem 0;
 }
 
-.analysis-section h4 {
-  margin-bottom: 1rem;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
   color: #333;
 }
 
-.analysis-row {
+.section-icon {
+  font-size: 1.3rem;
+}
+
+.analysis-badge {
+  background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.analysis-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 1rem;
   display: flex;
-  gap: 2rem;
-  margin-bottom: 0.5rem;
+  gap: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.analysis-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.card-label {
+  font-size: 0.8rem;
+  color: #999;
+  font-weight: 500;
+}
+
+.card-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.confidence-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.confidence-text {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.urgency-tag {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.urgency-tag.low {
+  background: #4caf50;
+  color: white;
+}
+
+.urgency-tag.medium {
+  background: #ff9800;
+  color: white;
+}
+
+.urgency-tag.high {
+  background: #f44336;
+  color: white;
+}
+
+.sentiment-tag {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.sentiment-tag.positive {
+  background: #4caf50;
+  color: white;
+}
+
+.sentiment-tag.neutral {
+  background: #9e9e9e;
+  color: white;
+}
+
+.sentiment-tag.negative {
+  background: #f44336;
+  color: white;
+}
+
+.keywords-section {
+  background: rgba(255, 255, 255, 0.6);
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.keywords-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.8rem;
+}
+
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.keyword-tag {
+  background: rgba(102, 126, 234, 0.2);
+  color: #5c6bc0;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .replies-section {
