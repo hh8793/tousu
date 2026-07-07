@@ -6,7 +6,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 export const config = {
   port: parseInt(process.env.PORT || '3000'),
-  mongoUri: process.env.MONGODB_URI || (isProduction ? 'mongodb://mongodb.railway.internal:27017/complaint-management' : 'mongodb://localhost:27017/complaint-management'),
+  mongoUri: process.env.MONGODB_URI || (isProduction ? 'mongodb://mongodb.railway.internal:27017/complaint-management' : 'mongodb://127.0.0.1:27017/complaint-management'),
   jwtSecret: process.env.JWT_SECRET || 'railway-production-jwt-secret-key-32-characters-minimum-length',
   jwtExpiresIn: '7d',
   openClaw: {
