@@ -1,0 +1,12 @@
+{
+  "name": "complaint-management-system",
+  "version": "1.0.0",
+  "description": "城市投诉自动回复系统",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
+    "start": "node backend/dist/server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
