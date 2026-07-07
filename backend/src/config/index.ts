@@ -2,10 +2,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const config = {
   port: parseInt(process.env.PORT || '3000'),
-  mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/complaint-management',
-  jwtSecret: process.env.JWT_SECRET || 'your-secret-key-here-must-be-at-least-32-characters-long',
+  mongoUri: process.env.MONGODB_URI || (isProduction ? 'mongodb://mongodb.railway.internal:27017/complaint-management' : 'mongodb://localhost:27017/complaint-management'),
+  jwtSecret: process.env.JWT_SECRET || 'railway-production-jwt-secret-key-32-characters-minimum-length',
   jwtExpiresIn: '7d',
   openClaw: {
     apiUrl: process.env.OPENCLAW_API_URL || 'http://localhost:8080/api/v1',
